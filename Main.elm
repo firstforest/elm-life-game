@@ -3,6 +3,7 @@ import Mouse
 import Debug
 
 size = 20
+cellsize = 10
 
 type Cell = { isAlive:Bool, isSelected:Bool }
 type Cells = D.Dict (Float, Float) Cell
@@ -24,26 +25,27 @@ insertCell ps cs =
 
 testCells = insertCell [(4,4), (4,5), (4,6), (4,7),(4,8)] initialCells
 
-falseCell = Cell False False
+deadCell = Cell False False
+
+getCell : Cells -> (Float, Float) -> Cell
+getCell cells (x, y) =
+   D.getOrElse deadCell (x, y) cells
 
 getAroundCells : (Float, Float) -> Cells -> [Cell]
 getAroundCells (x, y) cs =
-  [ D.getOrElse falseCell (x-1,y-1) cs
-  , D.getOrElse falseCell (x-1,y) cs
-  , D.getOrElse falseCell (x-1,y+1) cs
-  , D.getOrElse falseCell (x,y-1) cs
-  , D.getOrElse falseCell (x,y+1) cs
-  , D.getOrElse falseCell (x+1,y-1) cs
-  , D.getOrElse falseCell (x+1,y) cs
-  , D.getOrElse falseCell (x+1,y+1) cs
-  ]
+  map (getCell cs )
+    [ (x-1,y-1), (x  ,y-1), (x+1,y-1)
+    , (x-1,y  ),            (x+1,y  )
+    , (x-1,y+1), (x  ,y+1), (x+1,y+1)
+    ]
 
+--周囲のセルが2~3個で生存、3個で新生、それ以外は死亡
 stepCell : Cells -> (Float, Float) -> Cells -> Cells
 stepCell base (x, y) cs =
   let
     aroundCells = getAroundCells (x, y) base
     aliveNums = length (filter (\c -> c.isAlive) aroundCells)
-    b = (2 == aliveNums && .isAlive (D.getOrElse falseCell (x, y) cs)) || aliveNums == 3
+    b = (2 == aliveNums && .isAlive (D.getOrElse deadCell (x, y) cs)) || aliveNums == 3
   in
     D.insert (x, y) (Cell b False) cs
 
@@ -55,11 +57,10 @@ stepCells {x, y, delta, isDown} cells =
       then foldl (stepCell cells) cells (D.keys cells)
       else D.map (\c -> {c | isSelected <- False }) cells
     pos = (toFloat (x // cellsize), toFloat (y // cellsize))
-    selectedCell = D.getOrElse falseCell pos nextCells
+    selectedCell = D.getOrElse deadCell pos nextCells
   in
     D.insert pos {selectedCell | isSelected <- True, isAlive <- selectedCell.isAlive || isDown} nextCells
 
-cellsize = 10
 offset = (size*cellsize/2) - 5
 
 cellColor cell =
